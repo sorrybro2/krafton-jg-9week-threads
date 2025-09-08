@@ -62,7 +62,6 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
-static void thread_test_preemption (void);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -207,7 +206,6 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
-	thread_test_preemption();  
 
 	return tid;
 }
@@ -234,36 +232,6 @@ thread_block (void) {
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
-
-/* 
-	ready_list를 우선순위 내림차순으로 유지하기 위한 비교자
-*/
-static bool thread_priority_compare(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
-	// thread 구조체를 가져와야 하는 이유 : priority를 써야하므로!
-	const struct thread *ta = list_entry(a, struct thread, elem); // list_elem a -> 소속 thread 구조체 주소로 역참조
-	const struct thread *tb = list_entry(b, struct thread, elem); // list_elem b -> 소속 thread 구조체 주소로 역참조
-	return ta->priority > tb->priority; // 우선 순위가 클수록 먼저임
-}
-
-/* ready_list 맨 앞(최고 우선순위)이 현재보다 높으면 양보 */
-static void thread_test_preemption(void) {
-  if (intr_context()) return;                    // (1) ISR(인터럽트 핸들러) 컨텍스트에선 '즉시 스위치' 금지.
-                                                 //     ※ 복귀 직후 스케줄이 필요하면 다른 경로(need_resched/intr_yield_on_return 등)에서 처리해야 함.
-
-  enum intr_level old = intr_disable();          // (2) 짧은 임계구역 진입: 검사→결정→상태수정을 인터럽트 끼어듦 없이 원자적으로 수행
-  if (!list_empty(&ready_list)) {                // (3) 대기 스레드가 하나라도 있으면
-    int top = list_entry(list_front(&ready_list),
-                         struct thread, elem)->priority; // (4) 대기열 맨 앞(최우선) 스레드의 우선순위 확인
-                                                         //     ※ 현재는 base priority만 사용(우선순위 기부 미반영)
-    if (top > thread_current()->priority) {      // (5) 더 높은 우선순위 스레드가 준비됨 → 선점 필요
-      intr_set_level(old);                       // (6) 임계구역 종료: 인터럽트 상태 복구
-      thread_yield();                            // (7) 즉시 양보하여 스케줄러가 높은 우선순위를 태우게 함
-      return;                                    // (8) 양보했으므로 종료
-    }
-  }
-  intr_set_level(old);                           // (9) 선점 조건 없음 → 인터럽트 상태만 원복하고 종료
-}
-
 void
 thread_unblock (struct thread *t) {
 	enum intr_level old_level;
@@ -272,9 +240,7 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_insert_ordered(&ready_list, &t->elem, thread_priority_compare, NULL);
-	
-	// list_insert_ordered()
+	list_push_back (&ready_list, &t->elem);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -337,20 +303,21 @@ thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-    	list_insert_ordered(&ready_list, &curr->elem, thread_priority_compare, NULL);
+		list_push_back (&ready_list, &curr->elem);
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
-void thread_set_priority (int new_priority) {
-  thread_current()->priority = new_priority;
-  thread_test_preemption();  // 낮아져서 top이 아니면 즉시 양보
+void
+thread_set_priority (int new_priority) {
+	thread_current ()->priority = new_priority;
 }
+
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
-	return thread_current()->priority;
+	return thread_current ()->priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
