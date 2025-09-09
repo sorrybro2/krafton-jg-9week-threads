@@ -12,7 +12,7 @@ alarm-priority PASS
 priority-fifo FAIL
 priority-sema FAIL
 alarm-zero PASS
-priority-change FAIL
+priority-change PASS
 alarm-negative PASS
 priority-donate-sema FAIL
 alarm-multiple PASS
