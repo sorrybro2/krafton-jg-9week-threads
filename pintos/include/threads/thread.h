@@ -91,6 +91,15 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
+	int64_t wake_ticks;                 /* Tick to wake up (for timer_sleep). */
+	
+	/* 우선순위 기부 관련 필드들 */
+	int base_priority;                  /* 기본 우선순위 (thread_set_priority로 설정) */
+	int eff_priority;                   /* 유효 우선순위 (기부받은 우선순위 포함) */
+	struct list donators;               /* 나에게 우선순위를 기부한 스레드들의 리스트 */
+	struct list_elem donate_elem;       /* 내가 다른 스레드의 donators 리스트에 들어갈 때 사용하는 요소 */
+	struct lock *waiting_lock;          /* 내가 현재 기다리고 있는 락 */
+	struct list held_locks;             /* 내가 현재 보유하고 있는 락들의 리스트 */
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
@@ -132,9 +141,17 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
+void requeue_ready_list(struct thread *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+/* Priority comparison function for external use */
+bool thread_priority_compare (const struct list_elem *a, const struct list_elem *b, void *aux);
+
+/* Priority donation helper functions */
+void thread_donate_priority (struct thread *t);
+void thread_update_priority (struct thread *t);
 
 int thread_get_nice (void);
 void thread_set_nice (int);

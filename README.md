@@ -129,3 +129,8 @@ git push -u origin main
 - `git push`: 새로운 리포에 최초 업로드(Push)합니다.
 
 이 과정을 거치면 기존 리포와의 연결은 완전히 제거되고, **새로운 독립적인 프로젝트로 관리**할 수 있습니다.
+
+
+Brand new pintos for Operating Systems and Lab (CS330), KAIST, by Youngjin Kwon.
+
+The manual is available at https://casys-kaist.github.io/pintos-kaist/.
