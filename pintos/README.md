@@ -401,3 +401,5 @@ eff_priority = max(base_priority, max(donators의 모든 eff_priority))
 ---
 
 *"임계구간은 뮤텍스로, 우선순위 순서는 세마포어로 - 완벽한 동기화의 핵심!"* ✨
+
+branch
