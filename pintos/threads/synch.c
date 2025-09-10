@@ -231,7 +231,7 @@ lock_acquire (struct lock *lock) {
 	2. 새로운 유효 우선순위 계산 및 검증 
 	3. 변경 됐고 ready상태라면 ready_list update
 */
-void propagate_eff_priority() {
+void propagate_eff_priority() { // 퍼뜨리다!
 	enum intr_level old = intr_disable();
 	struct thread *cur = thread_current();
 	struct lock *w_lock = cur->waiting_lock;
